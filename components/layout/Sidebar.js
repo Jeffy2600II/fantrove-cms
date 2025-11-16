@@ -1,40 +1,45 @@
 'use client';
-import React, { useEffect } from 'react';
+import React from 'react';
 import FileTree from '../workspace/FileTree';
 import { useFileStore } from '../../lib/store';
-import { useFileManager } from '../../hooks/useFileManager';
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const currentPath = useFileStore(s => s.currentPath);
-  const setPath = useFileStore(s => s.setPath);
-  const files = useFileStore(s => s.files);
-  const { fetchFiles } = useFileManager();
   
-  // โหลดไฟล์ใหม่ทุกครั้งที่ path เปลี่ยน
-  useEffect(() => {
-    fetchFiles(currentPath);
-  }, [currentPath, fetchFiles]);
-  
-  // Go Back (ย้อนกลับไปโฟลเดอร์ก่อนหน้า)
-  function goBack() {
-    if (!currentPath) return;
-    const parts = currentPath.split('/');
-    parts.pop();
-    setPath(parts.join('/') || '');
-  }
-  
+  // Desktop: แสดง sidebar ปกติ, Mobile: แสดงเป็น Drawer/Overlay
   return (
-    <aside className="hidden md:block w-64 bg-white border-r p-4 h-screen overflow-y-auto">
-      <div className="mb-4 flex flex-col">
-        <h2 className="font-semibold mb-1">Workspace</h2>
-        <p className="text-xs text-gray-500 truncate">{currentPath || 'Root'}</p>
-        {currentPath &&
-          <button onClick={goBack} className="mt-2 px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300 self-start">
-            ⬅️ Go Back
-          </button>
-        }
+    <>
+      {/* --- MOBILE SIDEBAR --- */}
+      <div
+        className={`fixed top-0 left-0 h-full w-64 bg-white border-r z-40 transition-transform duration-200
+        ${open ? 'translate-x-0' : '-translate-x-full'} md:hidden`}
+      >
+        <div className="flex justify-between items-center p-4 border-b">
+          <span className="font-bold">Workspace</span>
+          <button onClick={onClose} className="text-xl">&times;</button>
+        </div>
+        <div className="p-3">
+          <p className="text-xs text-gray-400 mb-2">{currentPath || 'Root'}</p>
+          <FileTree />
+        </div>
       </div>
-      <FileTree files={files} currentPath={currentPath} setPath={setPath} />
-    </aside>
+      {/* Overlay */}
+      {open &&
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          aria-label="close sidebar"
+        />
+      }
+
+      {/* --- DESKTOP SIDEBAR --- */}
+      <aside className="hidden md:block w-64 bg-white border-r h-screen overflow-y-auto">
+        <div className="p-4 border-b font-bold">Workspace</div>
+        <div className="p-3">
+          <p className="text-xs text-gray-400 mb-2">{currentPath || 'Root'}</p>
+          <FileTree />
+        </div>
+      </aside>
+    </>
   );
 }
