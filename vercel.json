@@ -1,0 +1,37 @@
+{
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "pages/api/**": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "env": [
+    "NEXT_PUBLIC_GITHUB_REPO_OWNER",
+    "NEXT_PUBLIC_GITHUB_REPO_NAME",
+    "GITHUB_TOKEN",
+    "NEXT_PUBLIC_API_URL"
+  ],
+  "github": {
+    "enabled": true,
+    "silent": false,
+    "autoAlias": true,
+    "autoJobCancelation": true
+  },
+  "trailingSlash": false,
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ]
+}
