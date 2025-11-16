@@ -22,13 +22,55 @@ body {
   min-height: 100vh;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
+/* Mobile-first layout for editor */
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 12px;
+}
+
+/* Editor specific */
+.cm-editor {
+  height: 100%;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px;
+}
+
+/* Toolbar stuck to bottom on small screens */
+@media (max-width: 1024px) {
+  .editor-toolbar-sticky {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+  }
+
+  main {
+    padding-bottom: 72px; /* keep space for toolbar */
+  }
+}
+
+/* A little nicer file tree on small screens */
+.file-tree {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* small screens: single column; larger screens: split */
+@media (min-width: 1024px) {
+  .container {
+    padding: 20px;
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }

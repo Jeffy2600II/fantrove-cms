@@ -14,7 +14,13 @@
     "react-dom": "^18.2.0",
     "@octokit/rest": "^20.0.0",
     "axios": "^1.6.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "@uiw/react-codemirror": "^5.0.0",
+    "@codemirror/lang-javascript": "^6.1.0",
+    "@codemirror/lang-json": "^6.1.0",
+    "@codemirror/lang-markdown": "^6.1.0",
+    "fuse.js": "^6.6.2",
+    "react-hotkeys-hook": "^4.5.0"
   },
   "devDependencies": {
     "tailwindcss": "^3.3.0",
