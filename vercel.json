@@ -4,28 +4,9 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "functions": {
-    "pages/api/**": {
+    "app/api/**": {
       "maxDuration": 30,
       "memory": 1024
     }
-  },
-  "github": {
-    "enabled": true,
-    "silent": false,
-    "autoAlias": true,
-    "autoJobCancelation": true
-  },
-  "trailingSlash": false,
-  "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
-      ]
-    }
-  ]
+  }
 }

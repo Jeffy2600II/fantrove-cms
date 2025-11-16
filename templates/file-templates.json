@@ -1,0 +1,12 @@
+[
+  {
+    "id": "md-default",
+    "name": "Markdown",
+    "content": "# New Document\n"
+  },
+  {
+    "id": "json-data",
+    "name": "JSON Data",
+    "content": "{\n  \"data\": []\n}\n"
+  }
+]

@@ -1,0 +1,4 @@
+/* small component helpers */
+.card {
+  @apply bg-white rounded-lg shadow-sm p-4;
+}

@@ -1,0 +1,10 @@
+/* Mobile-first breakpoints and adjustments */
+@media (min-width: 640px) {
+  .container { padding: 20px; }
+}
+@media (min-width: 768px) {
+  .container { max-width: 1024px; }
+}
+@media (min-width: 1024px) {
+  .container { max-width: 1200px; }
+}
