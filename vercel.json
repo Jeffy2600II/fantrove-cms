@@ -9,20 +9,6 @@
       "memory": 1024
     }
   },
-  "env": {
-    "NEXT_PUBLIC_GITHUB_REPO_OWNER": {
-      "description": "GitHub repository owner"
-    },
-    "NEXT_PUBLIC_GITHUB_REPO_NAME": {
-      "description": "GitHub repository name"
-    },
-    "GITHUB_TOKEN": {
-      "description": "GitHub Personal Access Token"
-    },
-    "NEXT_PUBLIC_API_URL": {
-      "description": "API URL for frontend"
-    }
-  },
   "github": {
     "enabled": true,
     "silent": false,
