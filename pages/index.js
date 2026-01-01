@@ -1,7 +1,7 @@
 // pages/index.js
 import { useEffect, useState } from 'react';
 
-function CategoryTree({ expanded, onPreview }) {
+function CategoryTree({ expanded, onRequestContent }) {
   if (!expanded || expanded.length === 0) return <div>ยังไม่มีข้อมูล</div>;
   
   return (
@@ -12,50 +12,35 @@ function CategoryTree({ expanded, onPreview }) {
           <div key={cat.meta.id} style={{ marginBottom: 16, border: '1px solid #eee', padding: 8, borderRadius: 6 }}>
             <div style={{ fontWeight: '700', marginBottom: 8 }}>{catName} <small style={{ color: '#666' }}>({cat.meta.id})</small></div>
 
-            {/* If category has direct data (some categories may contain data array) */}
-            {cat.content && Array.isArray(cat.content.data) && (
+            {/* If the category itself contains direct data (flag only) */}
+            {cat.hasDirectData && (
               <div style={{ paddingLeft: 8, marginBottom: 8 }}>
-                <div style={{ fontWeight: 600 }}>ข้อมูลภายในหมวด</div>
-                <ul>
-                  {cat.content.data.map((it, i) => (
-                    <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 18 }}>{it.text || ''}</span>
-                      <span>{(it.name && (it.name.th || it.name.en)) || it.name || it.api || 'unnamed'}</span>
-                      <button style={{ marginLeft: 'auto' }} onClick={() => onPreview({ type: 'item', meta: it, parent: cat.meta.id })}>ดูรายละเอียด</button>
-                    </li>
-                  ))}
-                </ul>
+                <div style={{ color: '#666' }}>มีข้อมูลภายในหมวดนี้ (โหลดไฟล์เพื่อดูรายละเอียด)</div>
+                <div style={{ marginTop: 6 }}>
+                  <button onClick={() => onRequestContent(cat.path)}>โหลดไฟล์หมวด</button>
+                </div>
               </div>
             )}
 
-            {/* Subcategories */}
+            {/* Subcategories (meta-only listing) */}
             {Array.isArray(cat.subcategories) && cat.subcategories.length > 0 && (
               <div style={{ paddingLeft: 8 }}>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>หมวดย่อย</div>
                 {cat.subcategories.map(sc => {
-                  const scName = (sc.meta.name && (sc.meta.name.th || sc.meta.name.en)) || sc.meta.id;
+                  const scName = (sc.name && (sc.name.th || sc.name.en)) || sc.id;
+                  // determine resolved path for subcategory file (support absolute or relative)
+                  const scFile = (sc.file && String(sc.file)) || '';
+                  const resolvedPath = scFile.startsWith('/') ? scFile : `/assets/db/con-data/${scFile}`;
                   return (
-                    <div key={sc.meta.id} style={{ marginBottom: 8, padding: 8, background: '#f9f9fb', borderRadius: 4 }}>
-                      <div style={{ fontWeight: 600 }}>{scName} <small style={{ color: '#666' }}>({sc.meta.id})</small></div>
-                      {/* Show short preview of items */}
-                      <div style={{ marginTop: 6 }}>
-                        {sc.content && Array.isArray(sc.content.data) && sc.content.data.length > 0 ? (
-                          <ul>
-                            {sc.content.data.map((it, idx) => (
-                              <li key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <span style={{ fontSize: 18 }}>{it.text || ''}</span>
-                                <span>{(it.name && (it.name.th || it.name.en)) || it.name || it.api || 'unnamed'}</span>
-                                <button style={{ marginLeft: 'auto' }} onClick={() => onPreview({ type: 'item', meta: it, parent: sc.meta.id })}>ดู</button>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div style={{ color: '#666' }}>ไม่มีข้อมูลภายในหมวดย่อยนี้</div>
-                        )}
+                    <div key={sc.id} style={{ marginBottom: 8, padding: 8, background: '#f9f9fb', borderRadius: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontWeight: 600 }}>{scName} <small style={{ color: '#666' }}>({sc.id})</small></div>
+                        <div style={{ marginLeft: 'auto' }}>
+                          <button onClick={() => onRequestContent(resolvedPath)}>โหลดเนื้อหา</button>
+                        </div>
                       </div>
-
-                      <div style={{ marginTop: 6 }}>
-                        <button onClick={() => onPreview({ type: 'subcategory', meta: sc.meta, content: sc.content, parent: cat.meta.id })}>ดู JSON ของหมวดย่อย</button>
+                      <div style={{ marginTop: 6, color: '#666' }}>
+                        ไฟล์: {resolvedPath}
                       </div>
                     </div>
                   );
@@ -72,7 +57,8 @@ function CategoryTree({ expanded, onPreview }) {
 export default function Page() {
   const [expanded, setExpanded] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPreview, setSelectedPreview] = useState(null);
+  const [selectedContent, setSelectedContent] = useState(null);
+  const [loadingContent, setLoadingContent] = useState(false);
   
   useEffect(() => {
     setLoading(true);
@@ -93,42 +79,54 @@ export default function Page() {
       .finally(() => setLoading(false));
   }, []);
   
-  function handlePreview(obj) {
-    // obj: { type: 'item'|'subcategory', meta, content?, parent }
-    setSelectedPreview(obj);
+  async function loadFileContent(path) {
+    setLoadingContent(true);
+    setSelectedContent(null);
+    try {
+      const rr = await fetch('/api/github?path=' + encodeURIComponent(path));
+      const dd = await rr.json();
+      if (dd.contents && dd.contents.content) {
+        // decode base64 content (browser atob)
+        const text = atob(dd.contents.content);
+        // try parse JSON else show raw text
+        let parsed = null;
+        try { parsed = JSON.parse(text); } catch (e) { parsed = text; }
+        setSelectedContent({ path, content: parsed });
+      } else {
+        setSelectedContent({ path, content: null, error: dd.error || 'ไม่พบเนื้อหา' });
+      }
+    } catch (e) {
+      setSelectedContent({ path, content: null, error: String(e) });
+    } finally {
+      setLoadingContent(false);
+    }
   }
   
   return (
     <div style={{ padding: 20 }}>
-      <h1>Fantrove CMS — รายการเนื้อหา (ขยายทั้งหมด)</h1>
+      <h1>Fantrove CMS — รายการไฟล์ (meta-only)</h1>
       <div style={{ display: 'flex', gap: 20 }}>
         <div style={{ width: 480, maxHeight: '75vh', overflow: 'auto', border: '1px solid #e6e6e6', padding: 12, borderRadius: 6 }}>
-          <h3>โครงสร้างเนื้อหา</h3>
-          {loading ? <div>Loading...</div> : <CategoryTree expanded={expanded} onPreview={handlePreview} />}
+          <h3>โครงสร้างไฟล์ (ไม่โหลดเนื้อหา)</h3>
+          {loading ? <div>Loading...</div> : <CategoryTree expanded={expanded} onRequestContent={loadFileContent} />}
         </div>
 
         <div style={{ flex: 1 }}>
-          <h3>Preview / รายละเอียด</h3>
+          <h3>Preview / โหลดเนื้อหาแบบ on-demand</h3>
           <div style={{ whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: 10, minHeight: 240 }}>
-            {selectedPreview ? (
-              <div>
-                <div style={{ marginBottom: 8 }}>
-                  <strong>ชนิด:</strong> {selectedPreview.type} &nbsp;
-                  <strong>parent:</strong> {selectedPreview.parent || '-'}
-                </div>
+            {loadingContent ? <div>กำลังโหลด...</div> : (
+              selectedContent ? (
+                selectedContent.error ? <div style={{ color: 'red' }}>{selectedContent.error}</div> :
                 <pre style={{ whiteSpace: 'pre-wrap', background: '#fff', padding: 10, borderRadius: 4, maxHeight: '60vh', overflow: 'auto' }}>
-                  {JSON.stringify(selectedPreview.content || selectedPreview.meta, null, 2)}
+                  {JSON.stringify(selectedContent.content, null, 2)}
                 </pre>
-              </div>
-            ) : (
-              'เลือก "ดู" เพื่อแสดงรายละเอียด here'
-            )}
+              ) : 'กด "โหลดเนื้อหา" ที่ไฟล์ใด ๆ เพื่อดูรายละเอียด (on-demand)'}
           </div>
 
           <hr />
-          <h3>AI & การแก้ไข</h3>
+          <h3>หมายเหตุ</h3>
           <p style={{ color: '#666' }}>
-            หากต้องการใช้ AI เพื่อสร้าง Action List ให้เลือกหมวดย่อยที่ต้องการ (หรือพิมพ์คำสั่ง) แล้วส่งไปยัง AI — หลังจากได้ Action List แล้วกด Execute เพื่อให้ระบบแก้ไฟล์
+            ระบบจะไม่แสดงเนื้อหาของไฟล์ทั้งหมดในครั้งเดียวอีกต่อไป — UI จะแสดงเฉพาะโครงสร้าง (meta) และจะโหลดเนื้อหาเมื่อผู้ใช้กดปุ่ม "โหลดเนื้อหา"
           </p>
         </div>
       </div>

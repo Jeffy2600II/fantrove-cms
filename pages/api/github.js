@@ -18,46 +18,52 @@ export default async function handler(req, res) {
     // default path is folder root of content DB
     const gitPath = path ? String(path) : '/assets/db/con-data';
     
-    // If asking for root con-data, expand index.json and follow pointers to category files and subcategory files
+    // If asking for root con-data, expand index.json and follow pointers to category files,
+    // but DO NOT include full file contents of subcategory files — only meta (id,name,file).
     const rootNormalized = gitPath.replace(/\/+$/, '');
     if (!path || rootNormalized === '/assets/db/con-data') {
-      // read index.json
       const idxContents = await getContents('/assets/db/con-data/index.json');
       if (!idxContents) return res.status(404).json({ error: 'index.json not found' });
       const indexJson = decodeContent(idxContents);
       if (!indexJson) return res.status(500).json({ error: 'Failed to parse index.json' });
       
       const expanded = [];
-      for (const cat of indexJson.categories || []) {
-        // Resolve category file path (support both "emoji.min.json" and "/assets/db/con-data/emoji.min.json")
-        const catFile = (cat.file && String(cat.file)) || '';
-        const catPath = catFile.startsWith('/') ? catFile : `/assets/db/con-data/${catFile}`;
+      for (const catMeta of indexJson.categories || []) {
+        const catFileField = (catMeta.file && String(catMeta.file)) || '';
+        const catPath = catFileField.startsWith('/') ? catFileField : `/assets/db/con-data/${catFileField}`;
         const catContents = await getContents(catPath);
         const catJson = decodeContent(catContents) || null;
         
-        const subcategories = [];
-        // If category file itself has categories -> iterate and follow their file pointers
+        // Build category object with meta and subcategory meta only (no sub-file content)
+        const subcategoryMetas = [];
         if (catJson && Array.isArray(catJson.categories)) {
           for (const sc of catJson.categories) {
-            const scFile = (sc.file && String(sc.file)) || '';
-            // support both absolute and relative paths; relative are relative to /assets/db/con-data/
-            const scPath = scFile.startsWith('/') ? scFile : `/assets/db/con-data/${scFile}`;
-            const scContents = await getContents(scPath);
-            const scJson = decodeContent(scContents) || null;
-            subcategories.push({ meta: sc, path: scPath, content: scJson });
+            // keep only id, name, file info for listing
+            subcategoryMetas.push({
+              id: sc.id,
+              name: sc.name,
+              file: sc.file
+            });
           }
-        } else {
-          // category file may itself contain data (no subcategories)
-          // keep subcategories empty
         }
         
-        expanded.push({ meta: cat, path: catPath, content: catJson, subcategories });
+        expanded.push({
+          meta: {
+            id: catMeta.id,
+            name: catMeta.name,
+            file: catMeta.file
+          },
+          path: catPath,
+          hasDirectData: !!(catJson && Array.isArray(catJson.data) && catJson.data.length > 0),
+          subcategories: subcategoryMetas
+        });
       }
       
       return res.status(200).json({ index: indexJson, expanded });
     }
     
-    // Otherwise just proxy to getContents for the requested path
+    // Otherwise proxy to getContents for requested path (this will return full file content
+    // so the UI can request a specific file on-demand via ?path=...)
     const contents = await getContents(gitPath);
     return res.status(200).json({ contents });
   } catch (err) {
