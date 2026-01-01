@@ -1,6 +1,8 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/next" }
-  ]
+  "functions": {
+    "api/**": {
+      "runtime": "nodejs24.x"
+    }
+  }
 }
