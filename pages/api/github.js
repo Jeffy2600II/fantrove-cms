@@ -36,17 +36,22 @@ export default async function handler(req, res) {
         const catJson = decodeContent(catContents) || null;
         
         const subcategories = [];
+        // If category file itself has categories -> iterate and follow their file pointers
         if (catJson && Array.isArray(catJson.categories)) {
           for (const sc of catJson.categories) {
             const scFile = (sc.file && String(sc.file)) || '';
+            // support both absolute and relative paths; relative are relative to /assets/db/con-data/
             const scPath = scFile.startsWith('/') ? scFile : `/assets/db/con-data/${scFile}`;
             const scContents = await getContents(scPath);
             const scJson = decodeContent(scContents) || null;
-            subcategories.push({ meta: sc, content: scJson });
+            subcategories.push({ meta: sc, path: scPath, content: scJson });
           }
+        } else {
+          // category file may itself contain data (no subcategories)
+          // keep subcategories empty
         }
         
-        expanded.push({ meta: cat, content: catJson, subcategories });
+        expanded.push({ meta: cat, path: catPath, content: catJson, subcategories });
       }
       
       return res.status(200).json({ index: indexJson, expanded });
