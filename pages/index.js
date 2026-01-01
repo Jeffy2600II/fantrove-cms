@@ -7,9 +7,20 @@ function FileList({ onSelect }) {
     fetch('/api/github')
       .then(r => r.json())
       .then(d => {
-        // d.contents is either array (for folder) or object (for file)
-        if (Array.isArray(d.contents)) setFiles(d.contents);
-        else setFiles([]);
+        // Support both old style (d.contents array) and new expanded index (d.index / d.expanded)
+        if (Array.isArray(d.contents)) {
+          setFiles(d.contents);
+        } else if (d.index && Array.isArray(d.index.categories)) {
+          // Build a flat list of category files (we show top-level category files)
+          const list = d.index.categories.map(c => ({
+            path: c.file.startsWith('/') ? c.file : `/assets/db/con-data/${c.file}`,
+            name: (c.name && (c.name.th || c.name.en)) || c.id,
+            type: 'file'
+          }));
+          setFiles(list);
+        } else {
+          setFiles([]);
+        }
       }).catch(() => setFiles([]));
   }, []);
   return (
@@ -19,30 +30,20 @@ function FileList({ onSelect }) {
         {files.map(f => (
           <li key={f.path}>
             <button onClick={async () => {
-              const r = await fetch('/api/github?path=' + encodeURIComponent(f.path));
-              const jj = await r.json();
+              const rr = await fetch('/api/github?path=' + encodeURIComponent(f.path));
+              const dd = await rr.json();
               // if content object returned (file), fetch full file
-              if (jj.contents && jj.contents.content) {
-                const c = jj.contents;
+              if (dd.contents && dd.contents.content) {
+                const c = dd.contents;
                 const text = atob(c.content);
                 onSelect({ path: f.path, type: f.type, content: text });
-              } else if (f.type === 'dir') {
-                // navigate into dir to list
-                const rr = await fetch('/api/github?path=' + encodeURIComponent(f.path));
-                const dd = await rr.json();
-                onSelect({ path: f.path, type: f.type, content: JSON.stringify(dd.contents, null, 2) });
+              } else if (dd.index || dd.expanded) {
+                // server returned expanded index — convert to readable JSON
+                onSelect({ path: f.path, type: 'expanded', content: JSON.stringify(dd, null, 2) });
               } else {
-                // try fetch file
-                const rr = await fetch('/api/github?path=' + encodeURIComponent(f.path));
-                const dd = await rr.json();
-                if (dd.contents && dd.contents.content) {
-                  const text = atob(dd.contents.content);
-                  onSelect({ path: f.path, type: 'file', content: text });
-                } else {
-                  onSelect({ path: f.path, type: f.type, content: '' });
-                }
+                onSelect({ path: f.path, type: f.type, content: '' });
               }
-            }}>{f.path}</button>
+            }}>{f.name || f.path}</button>
           </li>
         ))}
       </ul>
@@ -70,7 +71,6 @@ export default function Page() {
   }
   
   async function previewActions() {
-    // For now preview = aiText parsed server-side? We'll show aiText raw and let execute endpoint parse/validate
     setPreview(aiText);
   }
   
@@ -104,7 +104,7 @@ export default function Page() {
           </div>
 
           <h3>คำสั่ง (ภาษาไทย)</h3>
-          <textarea value={prompt} onChange={e => setPrompt(e.target.value)} style={{ width: '100%', height: 120 }} placeholder="พิมพ์คำสั่งเป็นภาษาไทย เช่น: เพิ่มหมวดหมู่ใหม่..." />
+          <textarea value={prompt} onChange={e => setPrompt(e.target.value)} style={{ width: '100%', height: 120 }} placeholder="พิมพ์คำสั่งเป็นภาษาไทย ..." />
 
           <div style={{ marginTop: 8 }}>
             <button onClick={askAI} disabled={!prompt}>ส่งให้ AI (OpenRouter)</button>
@@ -118,7 +118,7 @@ export default function Page() {
       </div>
       <hr />
       <p style={{ color: '#666' }}>
-        หมายเหตุ: AI ภายในเว็บจะทำหน้าที่เป็น Content Planner เท่านั้น — คืนเฉพาะ "Action List" ที่ระบบจะแปลงเป็นการเปลี่ยนแปลงไฟล์ JSON และ commit กลับ GitHub
+        หมายเหตุ: AI ภายในเว็บจะทำหน้าที่เป็น Content Planner เท่านั้น — คืนเฉพาะ "Action List"
       </p>
     </div>
   );
