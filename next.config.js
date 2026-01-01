@@ -1,11 +1,9 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+/** Next.js config minimal */
+module.exports = {
   reactStrictMode: true,
-  swcMinify: true,
-  output: 'standalone',
-  // **ลบบล็อกนี้**
-  // experimental: {
-  //   appDir: true,
-  // },
+  env: {
+    GITHUB_OWNER: process.env.GITHUB_OWNER,
+    GITHUB_REPO: process.env.GITHUB_REPO,
+    GITHUB_BRANCH: process.env.GITHUB_BRANCH || 'main'
+  }
 };
-module.exports = nextConfig;

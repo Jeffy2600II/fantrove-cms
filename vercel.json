@@ -1,12 +1,12 @@
 {
-  "buildCommand": "next build",
-  "devCommand": "next dev",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "functions": {
-    "app/api/**": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  }
+  "version": 2,
+  "builds": [
+    { "src": "package.json", "use": "@vercel/next" }
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/" }
+  ]
 }

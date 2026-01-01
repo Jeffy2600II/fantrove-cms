@@ -1,29 +1,17 @@
 {
-  "name": "fantrove-cms-platform",
-  "version": "1.0.0",
+  "name": "fantrove-cms-ui",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3000",
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "^14.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@octokit/rest": "^20.0.0",
-    "zustand": "^4.5.2",
-    "clsx": "^1.2.1"
-  },
-  "devDependencies": {
-    "tailwindcss": "^3.3.0",
-    "postcss": "^8.4.31",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.50.0",
-    "eslint-config-next": "^14.0.0"
-  },
-  "engines": {
-    "node": "22.x"
+    "ajv": "^8.12.0",
+    "next": "13.4.12",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   }
 }
