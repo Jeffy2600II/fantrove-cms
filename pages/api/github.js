@@ -2,13 +2,19 @@
 // small wrapper to list and read files inside /assets/db/con-data. Only GET allowed here.
 import { getContents } from '../../lib/core/githubClient';
 
-function decodeContent(contentsObj) {
+function decodeJson(contentsObj) {
   if (!contentsObj || !contentsObj.content) return null;
   try {
     return JSON.parse(Buffer.from(contentsObj.content, contentsObj.encoding).toString('utf8'));
   } catch (e) {
     return null;
   }
+}
+
+function resolvePath(fileRef) {
+  if (!fileRef) return null;
+  const s = String(fileRef);
+  return s.startsWith('/') ? s : `/assets/db/con-data/${s}`.replace(/\/\/+/g, '/');
 }
 
 export default async function handler(req, res) {
@@ -18,52 +24,61 @@ export default async function handler(req, res) {
     // default path is folder root of content DB
     const gitPath = path ? String(path) : '/assets/db/con-data';
     
-    // If asking for root con-data, expand index.json and follow pointers to category files,
-    // but DO NOT include full file contents of subcategory files — only meta (id,name,file).
+    // When requesting root, return index + expanded tree (metadata only, no file "data")
     const rootNormalized = gitPath.replace(/\/+$/, '');
     if (!path || rootNormalized === '/assets/db/con-data') {
+      // read index.json
       const idxContents = await getContents('/assets/db/con-data/index.json');
       if (!idxContents) return res.status(404).json({ error: 'index.json not found' });
-      const indexJson = decodeContent(idxContents);
+      const indexJson = decodeJson(idxContents);
       if (!indexJson) return res.status(500).json({ error: 'Failed to parse index.json' });
       
-      const expanded = [];
-      for (const catMeta of indexJson.categories || []) {
-        const catFileField = (catMeta.file && String(catMeta.file)) || '';
-        const catPath = catFileField.startsWith('/') ? catFileField : `/assets/db/con-data/${catFileField}`;
-        const catContents = await getContents(catPath);
-        const catJson = decodeContent(catContents) || null;
+      const tree = [];
+      for (const cat of indexJson.categories || []) {
+        const catFileRef = cat.file || '';
+        const catPath = resolvePath(catFileRef);
+        // Try to read the category file to obtain its metadata (but we will NOT include its data array)
+        let catJson = null;
+        try {
+          const catContents = await getContents(catPath);
+          catJson = decodeJson(catContents);
+        } catch (e) {
+          catJson = null;
+        }
         
-        // Build category object with meta and subcategory meta only (no sub-file content)
-        const subcategoryMetas = [];
+        const catNode = {
+          id: cat.id,
+          name: cat.name,
+          file: catFileRef,
+          path: catPath,
+          hasData: !!(catJson && Array.isArray(catJson.data) && catJson.data.length > 0),
+          dataCount: catJson && Array.isArray(catJson.data) ? catJson.data.length : 0,
+          subcategories: []
+        };
+        
+        // If category file declares subcategories (meta), include their meta and resolved path only (no file content)
         if (catJson && Array.isArray(catJson.categories)) {
           for (const sc of catJson.categories) {
-            // keep only id, name, file info for listing
-            subcategoryMetas.push({
+            const scFileRef = sc.file || '';
+            const scPath = resolvePath(scFileRef);
+            catNode.subcategories.push({
               id: sc.id,
               name: sc.name,
-              file: sc.file
+              file: scFileRef,
+              path: scPath
+              // intentionally do NOT include sc.content or sc.data — user requested no inline content
             });
           }
         }
         
-        expanded.push({
-          meta: {
-            id: catMeta.id,
-            name: catMeta.name,
-            file: catMeta.file
-          },
-          path: catPath,
-          hasDirectData: !!(catJson && Array.isArray(catJson.data) && catJson.data.length > 0),
-          subcategories: subcategoryMetas
-        });
+        tree.push(catNode);
       }
       
-      return res.status(200).json({ index: indexJson, expanded });
+      return res.status(200).json({ index: indexJson, tree });
     }
     
-    // Otherwise proxy to getContents for requested path (this will return full file content
-    // so the UI can request a specific file on-demand via ?path=...)
+    // Otherwise proxy the raw GitHub contents for the requested path.
+    // This branch is used when frontend explicitly asks for file contents (e.g., "ดูเนื้อหา")
     const contents = await getContents(gitPath);
     return res.status(200).json({ contents });
   } catch (err) {
